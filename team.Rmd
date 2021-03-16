@@ -1,0 +1,10 @@
+---
+title: "Lab 4"
+author: "Brandon Rouse and Sam Reinart"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+

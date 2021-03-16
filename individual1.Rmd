@@ -1,0 +1,9 @@
+---
+title: "Individual Analysis"
+author: "Brandon Rouse"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
