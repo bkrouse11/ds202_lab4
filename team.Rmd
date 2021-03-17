@@ -6,5 +6,73 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
 ```
 
+# Loading Data
+```{r}
+defense <- read_excel('cyclonesFootball2020.xlsx', sheet='Defensive')
+offense <- read_excel('cyclonesFootball2020.xlsx', sheet='Offensive')
+biography <- read_excel('cyclonesFootball2020.xlsx', sheet='Biography')
+```
+
+# Cleaning Data
+1. 
+```{r}
+
+```
+
+2. 
+```{r}
+
+```
+
+3.
+```{r}
+
+```
+
+# Tidying Data
+1. 
+```{r}
+
+```
+
+2. 
+```{r}
+
+```
+
+3. 
+```{r}
+
+```
+
+4.
+```{r}
+
+```
+
+5. 
+```{r}
+
+```
+
+# Joining Data Frames
+1. 
+```{r}
+
+```
+
+2. 
+```{r}
+
+```
+
+3. 
+```{r}
+
+```
