@@ -79,7 +79,7 @@ The same scale was used for both the x and y axes in order to fairly compare the
 ```{r}
 bioClean <- bioClean %>%
   separate(Hometown, c("City", "State"), sep = ", ")
-head(bioClean %>% select(City, State))
+head(bioClean)
 playerStates <- bioClean %>% 
   group_by(State) %>%
   summarize(Number_of_Players = n()) 
