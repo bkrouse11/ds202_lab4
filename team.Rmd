@@ -22,17 +22,35 @@ biography <- read_excel('cyclonesFootball2020.xlsx', sheet='Biography')
 # Cleaning Data
 1. 
 ```{r}
-
+defClean <- defense %>% mutate(Name = as.factor(Name), Opponent_Opponent = as.factor(Opponent_Opponent))
+offClean <- offense %>% mutate(Name = as.factor(Name), Opponent_Opponent = as.factor(Opponent_Opponent))
+bioClean <- biography %>% mutate(Name = as.factor(Name))
 ```
 
 2. 
 ```{r}
-
+defClean <- defense %>%
+  mutate(across(Tackles_Solo:Pass_PB, as.numeric))
+offClean <- offense %>% mutate(Name = as.factor(Name), Opponent_Opponent = as.factor(Opponent_Opponent))
+offClean <- offense %>%
+  separate(`Passing_CMP-ATT`, c("Passing_CMP", "Passing_ATT"), sep = "-") %>%
+  mutate(
+    Passing_ATT = gsub("\\s", "", Passing_ATT),
+    across(Receiving_REC:Passing_INT, as.numeric))
 ```
 
 3.
 ```{r}
-
+bioClean <- biography %>%
+  separate(Height, c("Feet", "Inches"), sep="-") %>%
+  mutate(
+    Height = (as.numeric(Feet) * 12) + as.numeric(Inches),
+    Weight = as.numeric(Weight)) %>% 
+  select(-c("Feet", "Inches")) %>% 
+  relocate(Height, .before=Weight)
+str(defClean)
+str(offClean)
+str(bioClean)
 ```
 
 # Tidying Data
