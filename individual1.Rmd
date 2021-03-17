@@ -6,4 +6,94 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
 ```
+
+# Loading Data
+```{r}
+defense <- read_excel('cyclonesFootball2020.xlsx', sheet='Defensive')
+offense <- read_excel('cyclonesFootball2020.xlsx', sheet='Offensive')
+biography <- read_excel('cyclonesFootball2020.xlsx', sheet='Biography')
+```
+
+# Cleaning Data
+```{r}
+defClean <- defense %>% mutate(Name = as.factor(Name), Opponent_Opponent = as.factor(Opponent_Opponent))
+offClean <- offense %>% mutate(Name = as.factor(Name), Opponent_Opponent = as.factor(Opponent_Opponent))
+bioClean <- biography %>% mutate(Name = as.factor(Name))
+defClean <- defClean %>% mutate(Tackles_Solo = as.double(Tackles_Solo), Tackles_ASST = as.double(Tackles_ASST), Tackles_TFL = as.double(Tackles_TFL), Turnover_FF = as.double(Turnover_FF), Turnover_FR = as.double(Turnover_FR), Turnover_INT = as.double(Turnover_INT), Pass_QBH = as.double(Pass_QBH), Pass_PB = as.double(Pass_PB), Tackles_Sack = as.double(Tackles_Sack))
+offClean <- offClean %>% mutate(Receiving_REC = as.double(Receiving_REC), Receiving_YDS = as.double(Receiving_YDS), Receiving_TD = as.double(Receiving_TD), Rushing_ATT = as.double(Rushing_ATT), Rushing_YDS = as.double(Rushing_YDS), Rushing_TD = as.double(Rushing_TD), `Passing_CMP-ATT` = as.double(`Passing_CMP-ATT`), Passing_YDS = as.double(Passing_YDS), Passing_TD = as.double(Passing_TD), Passing_INT = as.double(Passing_INT))
+bioClean <- bioClean %>% mutate(Weight = as.numeric(Weight))
+bioClean$Height <- bioClean$Height %>% str_replace("-",".")
+bioClean <- bioClean %>% mutate(Height = as.numeric(Height))
+str(defClean)
+str(offClean)
+str(bioClean)
+```
+
+# Tidying Data
+```{r}
+tidyoffClean <- offClean 
+tidyoffClean <- tidyoffClean %>% pivot_longer(c(Receiving_REC, Receiving_YDS), names_to = "type", values_to = "stat")
+```
+
+```{r}
+histOffClean <- offClean 
+histOffClean <- histOffClean %>% pivot_longer(c(-Name, -Opponent_Opponent), names_to = "type", values_to = "stat")
+ggplot(histOffClean, aes(x = stat)) + geom_histogram() + facet_wrap(~type, scales = 'free')
+```
+
+```{r}
+teams <- offClean 
+teams <- teams %>% pivot_longer(c(Receiving_YDS), names_to = "Receiving_Yards", values_to = "stat") 
+oregonRec <- teams %>% filter(Opponent_Opponent == 'Oregon')
+oregonRec <- oregonRec %>% select(stat)
+oregonRec[is.na(oregonRec)] = 0
+oregonRec[15, ] = 0
+oklahomaRec <- teams %>% filter(Opponent_Opponent == 'Oklahoma')
+oklahomaRec <- oklahomaRec %>% select(stat)
+oklahomaRec[is.na(oklahomaRec)] = 0
+oklahomaRec <- oklahomaRec[-c(3,7,8,9,10,11,12,13,21,25,26,27,28), ]
+compare <- rbind(oregonRec,oklahomaRec)
+```
+
+```{r}
+bioClean <- bioClean %>% separate(Hometown, c('City', 'State'), sep = ',')
+head(bioClean)
+```
+
+```{r}
+state <- bioClean %>% mutate(State = as.factor(State)) %>% group_by(State) %>% tally()
+state
+```
+
+
+# Joining data frames
+```{r}
+defense <- bioClean %>% semi_join(defClean, by = "Name")
+defenseStates <- defense %>% mutate(State = as.factor(State)) %>% group_by(State) %>% tally()
+defenseStates
+offense <- bioClean %>% semi_join(offClean, by = "Name")
+offenseStates <- offense %>% mutate(State = as.factor(State)) %>% group_by(State) %>% tally()
+offenseStates
+```
+
+```{r}
+offense2019 <- read_excel('cyclonesFootball2019.xlsx', sheet='Offensive')
+off2019Clean <- offense2019 %>% mutate(Name = as.factor(Name), Opponent_Opponent = as.factor(Opponent_Opponent))
+off2019Clean <- off2019Clean %>% mutate(Receiving_REC = as.double(Receiving_REC), Receiving_YDS = as.double(Receiving_YDS), Receiving_TD = as.double(Receiving_TD), Rushing_ATT = as.double(Rushing_ATT), Rushing_YDS = as.double(Rushing_YDS), Rushing_TD = as.double(Rushing_TD), `Passing_CMP-ATT` = as.double(`Passing_CMP-ATT`), Passing_YDS = as.double(Passing_YDS), Passing_TD = as.double(Passing_TD), Passing_INT = as.double(Passing_INT))
+purdy2020 <- offClean %>% filter(Name == "Purdy, Brock")
+purdy2019 <- off2019Clean %>% filter(Name == "Purdy, Brock")
+purdy2020 %>% summarise(averagePassYds2020 = mean(Passing_YDS))
+purdy2019 %>% summarise(averagePassYds2019 = mean(Passing_YDS))
+purdy2020 %>% summarise(averagePassTDs2020 = mean(Passing_TD))
+purdy2019 %>% summarise(averagePassTDs2019 = mean(Passing_TD))
+purdy2020 %>% summarise(averagePassINTs2020 = mean(Passing_INT))
+purdy2019 %>% summarise(averagePassINTs2019 = mean(Passing_INT))
+```
+
+
+
