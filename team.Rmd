@@ -55,27 +55,48 @@ str(bioClean)
 # Tidying Data
 1. 
 ```{r}
-
+offClean <- offClean %>%
+  pivot_longer(Receiving_REC:Passing_INT, names_to = "stat", values_to = "stat_value")
 ```
 
 2. 
 ```{r}
-
+offClean %>% 
+  ggplot(aes(x = stat_value)) + 
+  geom_histogram() + 
+  facet_wrap(~ stat, scales = "free") + 
+  labs(title = "ISU Offensive Stat Distributions", x = "Stat Value", y = "Number of Players with Stat")
 ```
+
+All of the stats appear to have a distribution resembling exponential decay or linear decrease, with many players having zeroes or another low value for each stat. Only a few players have high stats, which gives each graph its shape.
 
 3. 
 ```{r}
-
+offClean %>%
+  filter(Opponent_Opponent %in% c("Oregon", "Oklahoma") & stat == "Receiving_YDS") %>%
+  pivot_wider(names_from = Opponent_Opponent, values_from = stat_value, values_fn = mean) %>%
+  ggplot(aes(x=Oklahoma, y=Oregon)) + 
+  geom_point() + 
+  geom_abline(intercept = 0, slope = 1) + 
+  coord_fixed(xlim = c(0,100), ylim = c(0,100)) + 
+  labs(title = "Comparison of Receving Yards of ISU Players", x = "Yards Against Oklahoma", y = "Yards Against Oregon")
 ```
+
+The same scale was used for both the x and y axes in order to fairly compare the receiving yards in both games. Since ISU may play a team more than once a season (they played Oklahoma twice according to this data), the mean of the receiving yards in the games against the same opponent was used for comparison. A straight line with a slope of 1 was plotted on the graph in order to compare the receiving yards against both opponents. Since all the points lie either closer to the axis representing Oklahoma or on the straight line, the ISU players had better offense while playing against Oklahoma, therefore ISU had a better offense against Oklahoma. 
 
 4.
 ```{r}
-
+bioClean <- bioClean %>%
+  separate(Hometown, c("City", "State"), sep = ", ")
+head(bioClean)
 ```
 
 5. 
 ```{r}
-
+playerStates <- bioClean %>% 
+  group_by(State) %>%
+  summarize(Number_of_Players = n()) 
+playerStates %>% print(n = nrow(.))
 ```
 
 # Joining Data Frames
@@ -86,10 +107,105 @@ str(bioClean)
 
 2. 
 ```{r}
+passerRating <- offClean %>%
+  filter(Name == "Purdy, Brock") %>%
+  pivot_wider(names_from = stat, values_from = stat_value, values_fn = mean) %>%
+  mutate(Passer_Rating = 
+           ((8.4 * Passing_YDS) + (330 * Passing_TD) + 
+            (100 * Passing_CMP) - (200 * Passing_INT)) / 
+           Passing_ATT) %>%
+  select(Opponent_Opponent, Passer_Rating)
 
+teamPerf <- offClean %>%
+  filter(Name != "Purdy, Brock") %>%
+  group_by(Opponent_Opponent) %>%
+  summarize(Stat_Sum = sum(stat_value, na.rm = TRUE)) %>%
+  mutate(Stat_Sum = ifelse(Opponent_Opponent == "Oklahoma", Stat_Sum / 2, Stat_Sum))
+
+scale_range <- function(x, ...){0.5 + (x - min(x, ...)) / (max(x, ...) - min(x, ...))}
+
+comparePerfw <- passerRating %>% 
+  left_join(teamPerf, by = "Opponent_Opponent") %>%
+  mutate(across(Passer_Rating:Stat_Sum, scale_range))
+
+comparePerf <- comparePerfw %>% 
+  pivot_longer(Passer_Rating:Stat_Sum, names_to = "stat", values_to = "stat_sum")
+
+comparePerf %>% 
+  ggplot(aes(x=Opponent_Opponent, weight=stat_sum, fill=stat)) + 
+  geom_bar(position = "dodge") + 
+  theme(axis.text.x = element_text(size = 7, angle = 90, hjust = 1, vjust = 0.25)) + 
+  labs(
+    title = "Effect of Brock Purdy on ISU's Team Perfomance", 
+    x = "Opponent", 
+    y = "Stat (Scaled)") + 
+  scale_fill_discrete(
+    name = "Statistic", 
+    labels = c("Purdy Passer Rating", "Team Stat Sum"))
+
+cor(comparePerfw$Passer_Rating, comparePerfw$Stat_Sum)
 ```
+
+To compare Brock Purdy's performance to the team's performance, I first calculated Purdy's NCAA passer rating in every game, as it is a stat that incorporates multiple other stats to summarize a QB's performance. I then summed the stats of the rest of the offensive team members to summarize the team's' performance. The mean of Purdy and the team's performances against Oklahoma was taken, since the ISU played them twice. To compare the distributions of Purdy and the team's performances, the data for both was scaled between 0.5 and 1.5, so the distributions could be directly compared and to make the data easy to visualize.
+
+Looking at the distributions of the performances, it appears as though Brock Purdy's performance is correlated with the team's, as the height of the bars appear to follow similar patterns against each opponent. In addition, the correlation between the scaled data is 0.63, indicating a strong positive relationship between Purdy's performance and the team's.
 
 3. 
 ```{r}
+defense19 <- read_excel("./cyclonesFootball2019.xlsx", sheet="Defensive")
+offense19 <- read_excel("./cyclonesFootball2019.xlsx", sheet="Offensive")
 
+defClean19 <- defense19 %>%
+  mutate(
+    Name = factor(Name), 
+    Opponent_Opponent = factor(Opponent_Opponent), 
+    across(Tackles_Solo:Pass_PB, as.numeric))
+offClean19 <- offense19 %>%
+  separate(`Passing_CMP-ATT`, c("Passing_CMP", "Passing_ATT"), sep = "-") %>%
+  mutate(
+    Name = factor(Name), 
+    Opponent_Opponent = factor(Opponent_Opponent),
+    Passing_ATT = gsub("\\s", "", Passing_ATT),
+    across(Rushing_ATT:Passing_INT, as.numeric))
+
+offTotal19 <- offClean19 %>%
+  select(Name, Receiving_YDS, Rushing_YDS, Passing_YDS) %>%
+  rename(
+    Receiving_YDS19 = Receiving_YDS, 
+    Rushing_YDS19 = Rushing_YDS, 
+    Passing_YDS19 = Passing_YDS) %>%
+  pivot_longer(
+    Receiving_YDS19:Passing_YDS19, 
+    names_to = "Stat", 
+    values_to = "Stat_Val") %>%
+  group_by(Name) %>%
+  summarize(YPG19 = sum(Stat_Val, na.rm = TRUE) / n())
+offTotal20 <- offClean %>%
+  filter(stat %in% c("Receiving_YDS", "Rushing_YDS", "Passing_YDS")) %>%
+  group_by(Name) %>%
+  summarize(YPG20 = sum(stat_value, na.rm = TRUE) / n())
+offComp <- offTotal20 %>% 
+  left_join(offTotal19, by = "Name") %>% 
+  drop_na() %>%
+  mutate(Percent_Change = (YPG20 - YPG19) / YPG19) %>%
+  arrange(desc(Percent_Change))
+
+defTotal19 <- defClean19 %>%
+  mutate(Total_Tackles = Tackles_Solo + Tackles_ASST) %>%
+  group_by(Name) %>%
+  summarize(TPG19 = sum(Total_Tackles, na.rm = TRUE) / n())
+defTotal20 <- defClean %>%
+  mutate(Total_Tackles = Tackles_Solo + Tackles_ASST) %>%
+  group_by(Name) %>%
+  summarize(TPG20 = sum(Total_Tackles, na.rm = TRUE) / n())
+defComp <- defTotal20 %>%
+  left_join(defTotal19, by = "Name") %>%
+  drop_na() %>%
+  mutate(Percent_Change = (TPG20 - TPG19) / TPG19) %>%
+  arrange(desc(Percent_Change))
+
+head(offComp, 1)
+head(defComp, 1)
 ```
+
+For this analysis, I chose to determine two most improved players, one on offense and one on defense. For the offensive players, I calculated the percent change in yards gained per game from 2019 to 2020 for each player. Joe Scates was the most improved player, who improved his yards gained per game by 387% from the 2019 season to the 2020 season. For the defensive players, I calculated the percent change in tackles made per game from 2019 to 2020 for each player. Gerry Vaughn was the most improved defensive player, who improved his tackles per game by 767% from the 2019 season to the 2020 season.
