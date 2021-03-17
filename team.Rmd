@@ -31,7 +31,6 @@ bioClean <- biography %>% mutate(Name = as.factor(Name))
 ```{r}
 defClean <- defense %>%
   mutate(across(Tackles_Solo:Pass_PB, as.numeric))
-offClean <- offense %>% mutate(Name = as.factor(Name), Opponent_Opponent = as.factor(Opponent_Opponent))
 offClean <- offense %>%
   separate(`Passing_CMP-ATT`, c("Passing_CMP", "Passing_ATT"), sep = "-") %>%
   mutate(
